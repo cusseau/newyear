@@ -1,45 +1,275 @@
-// Cette fonction calcule les jours restants
-function getDaysUntilNewYear() {
-  // 1. La date d'aujourd'hui
-  const today = new Date();
-  
-  // 2. L'année en cours
-  const currentYear = today.getFullYear();
-  
-  // 3. La date du prochain Nouvel An (1er janvier de l'année prochaine)
-  // new Date(année, mois, jour) -> attention, les mois commencent à 0 (0 = Janvier)
-  const newYearDate = new Date(currentYear + 1, 0, 1);
+"use client";
 
-  // 4. Calculer la différence de temps en millisecondes
-  const diffTime = newYearDate.getTime() - today.getTime();
+import { useState, useEffect } from "react";
+import Image from "next/image";
 
-  // 5. Convertir les millisecondes en jours
-  // (1000ms * 60s * 60min * 24h)
-  // Math.ceil() arrondit au nombre supérieur pour avoir un nombre de jours complet
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  return diffDays;
+// --- Définitions (inchangées) ---
+interface Cat {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  isOnFire: boolean;
 }
+type GameState = "playing" | "won" | "lost";
 
-// Ta page d'accueil
+const createCat = (id: number): Cat => ({
+  id: id,
+  x: Math.random() * 90,
+  y: Math.random() * 90,
+  vx: (Math.random() - 0.5) * 2,
+  vy: (Math.random() - 0.5) * 2,
+  isOnFire: true,
+});
+
+// --- Objets de style (pour remplacer Tailwind) ---
+const styles = {
+  main: {
+    position: 'relative',
+    width: '100vw',
+    height: '100vh',
+    overflow: 'hidden',
+    backgroundColor: '#111827', // Fond sombre
+  },
+  overlay: {
+    position: 'absolute',
+    inset: 0,
+    zIndex: 20,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    color: 'white',
+    textAlign: 'center',
+  },
+  winTitle: {
+    fontSize: '3.75rem',
+    fontWeight: 'bold',
+    color: '#34D399', // Vert
+    marginBottom: '1rem',
+  },
+  winText: {
+    fontSize: '1.875rem',
+  },
+  winTime: {
+    fontSize: '2.25rem',
+    color: '#FDE047', // Jaune
+    marginTop: '0.5rem',
+  },
+  loseOverlay: {
+    position: 'absolute',
+    inset: 0,
+    zIndex: 20,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'black',
+    color: 'white',
+    textAlign: 'center',
+  },
+  loseTitle: {
+    fontSize: '6rem',
+    fontWeight: 'bold',
+    color: '#DC2626', // Rouge
+    marginBottom: '1rem',
+  },
+  loseText: {
+    fontSize: '2.25rem',
+  },
+  flash: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: 'white',
+    opacity: 0,
+    zIndex: 30,
+  },
+  hud: {
+    position: 'absolute',
+    top: '1rem',
+    zIndex: 10,
+    color: 'white',
+    fontSize: '1.5rem',
+    fontWeight: 'bold',
+    padding: '1rem',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: '0.5rem',
+  },
+  catContainer: {
+    position: 'absolute',
+    cursor: 'pointer',
+    userSelect: 'none',
+  },
+  catNormal: {
+    fontSize: '4.5rem', // text-7xl
+  }
+};
+
+
+// --- Composant Principal ---
 export default function Home() {
-  // On appelle la fonction pour récupérer le nombre de jours
-  const daysLeft = getDaysUntilNewYear();
+  const [cats, setCats] = useState<Cat[]>([]);
+  const [score, setScore] = useState(0);
+  const [time, setTime] = useState(0);
+  const [gameState, setGameState] = useState<GameState>("playing");
+
+  // --- Toute la logique du jeu (inchangée) ---
+  useEffect(() => {
+    const initialCats = [createCat(1), createCat(2), createCat(3), createCat(4), createCat(5)];
+    setCats(initialCats);
+  }, []);
+
+  useEffect(() => {
+    if (gameState !== "playing") return;
+    const timerId = setInterval(() => {
+      setTime((t) => {
+        const newTime = t + 1;
+        if (newTime >= 60) {
+          setGameState("lost");
+          clearInterval(timerId);
+          return 60;
+        }
+        return newTime;
+      });
+    }, 100);
+    return () => clearInterval(timerId);
+  }, [gameState]);
+
+  useEffect(() => {
+    if (gameState !== "playing") return;
+    const gameLoop = setInterval(() => {
+      setCats((currentCats) =>
+        currentCats.map((cat) => {
+          let newX = cat.x + cat.vx;
+          let newY = cat.y + cat.vy;
+          let newVx = cat.vx;
+          let newVy = cat.vy;
+          if (newX < 0 || newX > 90) newVx = -newVx;
+          if (newY < 0 || newY > 90) newVy = -newVy;
+          return { ...cat, x: newX + newVx, y: newY + newVy, vx: newVx, vy: newVy };
+        })
+      );
+    }, 50);
+    return () => clearInterval(gameLoop);
+  }, [gameState]);
+
+  useEffect(() => {
+    if (cats.length === 0 || gameState !== "playing") return;
+    const stillOnFire = cats.some((cat) => cat.isOnFire);
+    if (!stillOnFire) {
+      setGameState("won");
+    }
+  }, [cats, gameState]);
+
+  const extinguishFire = (catId: number) => {
+    if (gameState !== "playing") return;
+    const catIsOnFire = cats.find((cat) => cat.id === catId && cat.isOnFire);
+    if (catIsOnFire) {
+      setScore((s) => s + 1);
+      setCats((currentCats) =>
+        currentCats.map((cat) => {
+          if (cat.id === catId) {
+            return { ...cat, isOnFire: false };
+          }
+          return cat;
+        })
+      );
+    }
+  };
+  // --- Fin de la logique ---
 
   return (
-    // J'utilise Tailwind pour centrer le tout facilement
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 text-white">
-      <div className="text-center p-8 bg-gray-800 rounded-lg shadow-lg">
-        <h1 className="text-4xl font-bold text-green-400 mb-4">
-          Combien de dodos avant 2026 ?
-        </h1>
-        <p className="text-6xl font-extrabold text-white">
-          {daysLeft}
-        </p>
-        <p className="text-xl text-gray-300 mt-2">
-          jours restants !
-        </p>
-      </div>
-    </main>
+    <>
+      {/* On a besoin de cette balise <style> pour l'animation flash */}
+      <style>
+        {`
+          @keyframes flash {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+          }
+          .animate-flash {
+            animation: flash 0.5s ease-out forwards;
+          }
+        `}
+      </style>
+
+      {/* On utilise nos objets de style ici */}
+      <main style={styles.main}>
+        {/* Écran de victoire */}
+        {gameState === "won" && (
+          <div style={styles.overlay}>
+            <h1 style={styles.winTitle}>BRAVO !</h1>
+            <p style={styles.winText}>Tu as éteint tous les chats en</p>
+            <p style={styles.winTime}>{(time / 10).toFixed(1)} secondes</p>
+          </div>
+        )}
+
+        {/* Écran de défaite (Game Over) */}
+        {gameState === "lost" && (
+          <div style={styles.loseOverlay}>
+            <div style={styles.flash} className="animate-flash" /> {/* On garde la classe pour l'animation */}
+            <div style={{ zIndex: 10, textAlign: 'center' }}>
+              <h1 style={styles.loseTitle}>GAME OVER</h1>
+              <p style={styles.loseText}>"Ça a... cramé..."</p>
+              
+              <Image
+                src="/images/deadcat.jpg"
+                alt="Chat cramé"
+                width={300}
+                height={300}
+                style={{ objectFit: 'contain', marginTop: '2rem' }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Le jeu (ne s'affiche que si on est en train de jouer) */}
+        {gameState === "playing" && (
+          <>
+            {/* Affichage du score */}
+            <div style={{ ...styles.hud, left: '1rem' }}>
+              🔥 Chats éteints : {score} / 5
+            </div>
+
+            {/* Affichage du minuteur */}
+            <div style={{ 
+                ...styles.hud, 
+                right: '1rem', 
+                color: time > 500 ? '#EF4444' : 'white' // Rouge si < 10 sec
+              }}>
+              ⏱️ Temps : {(time / 10).toFixed(1)}
+            </div>
+
+            {/* On affiche chaque chat */}
+            {cats.map((cat) => (
+              <div
+                key={cat.id}
+                style={{
+                  ...styles.catContainer,
+                  left: `${cat.x}%`,
+                  top: `${cat.y}%`,
+                  transition: "left 0.05s linear, top 0.05s linear",
+                }}
+                onClick={() => extinguishFire(cat.id)}
+              >
+                {cat.isOnFire ? (
+                  <Image
+                    src="/images/firecat.png"
+                    alt="Chat avec le feu au cul"
+                    width={120}
+                    height={120}
+                    style={{ objectFit: 'contain' }}
+                  />
+                ) : (
+                  <span style={styles.catNormal}>😺</span>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+      </main>
+    </>
   );
 }
