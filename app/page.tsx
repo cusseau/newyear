@@ -84,7 +84,7 @@ const styles = {
     inset: 0,
     backgroundColor: 'white',
     opacity: 0,
-    zIndex: 30,
+    zIndex: 30, // Flash par-dessus tout
   },
   hud: {
     position: 'absolute',
@@ -105,7 +105,7 @@ const styles = {
   catNormal: {
     fontSize: '4.5rem', // text-7xl
   }
-};
+} as const; // <-- LA CORRECTION EST ICI. On dit à TS que c'est constant.
 
 
 // --- Composant Principal ---
@@ -126,10 +126,10 @@ export default function Home() {
     const timerId = setInterval(() => {
       setTime((t) => {
         const newTime = t + 1;
-        if (newTime >= 60) {
+        if (newTime >= 600) {
           setGameState("lost");
           clearInterval(timerId);
-          return 60;
+          return 600;
         }
         return newTime;
       });
@@ -197,7 +197,7 @@ export default function Home() {
 
       {/* On utilise nos objets de style ici */}
       <main style={styles.main}>
-        {/* Écran de victoire */}
+        {/* Écran de victoire (inchangé) */}
         {gameState === "won" && (
           <div style={styles.overlay}>
             <h1 style={styles.winTitle}>BRAVO !</h1>
@@ -206,25 +206,26 @@ export default function Home() {
           </div>
         )}
 
-        {/* Écran de défaite (Game Over) */}
+        {/* Écran de défaite (Game Over) (inchangé) */}
         {gameState === "lost" && (
           <div style={styles.loseOverlay}>
-            <div style={styles.flash} className="animate-flash" /> {/* On garde la classe pour l'animation */}
-            <div style={{ zIndex: 10, textAlign: 'center' }}>
+            <Image
+              src="/images/burnt-cat.png"
+              alt="Chat cramé"
+              fill
+              style={{ 
+                objectFit: 'contain',
+                zIndex: 10,
+              }}
+            />
+            <div style={styles.flash} className="animate-flash" />
+            <div style={{ zIndex: 20, textAlign: 'center', position: 'relative' }}>
               <h1 style={styles.loseTitle}>GAME OVER</h1>
               <p style={styles.loseText}>"Ça a... cramé..."</p>
-              
-              <Image
-                src="/images/deadcat.jpg"
-                alt="Chat cramé"
-                width={300}
-                height={300}
-                style={{ objectFit: 'contain', marginTop: '2rem' }}
-              />
             </div>
           </div>
         )}
-
+        
         {/* Le jeu (ne s'affiche que si on est en train de jouer) */}
         {gameState === "playing" && (
           <>
@@ -237,7 +238,7 @@ export default function Home() {
             <div style={{ 
                 ...styles.hud, 
                 right: '1rem', 
-                color: time > 500 ? '#EF4444' : 'white' // Rouge si < 10 sec
+                color: time > 500 ? '#EF4444' : 'white'
               }}>
               ⏱️ Temps : {(time / 10).toFixed(1)}
             </div>
@@ -256,7 +257,7 @@ export default function Home() {
               >
                 {cat.isOnFire ? (
                   <Image
-                    src="/images/firecat.png"
+                    src="/images/cat-on-fire.png"
                     alt="Chat avec le feu au cul"
                     width={120}
                     height={120}
