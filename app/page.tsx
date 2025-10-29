@@ -48,6 +48,7 @@ export default function Home() {
   };
 
   // Le "routeur" qui affiche le bon composant
+  // Le "routeur" qui affiche le bon composant
   const renderGame = () => {
     switch (activeGame) {
       case "catOnFire":
@@ -55,7 +56,8 @@ export default function Home() {
       case "snake":
         return <SnakeGame goBackToMenu={goBackToMenu} />;
       case "catcher":
-        return <CatcherGame goBackToMenu={goBackToMenu} />;
+        // AJOUTE "playMusic" ICI
+        return <CatcherGame goBackToMenu={goBackToMenu} playMusic={playMusic} />;
       case "menu":
       default:
         return <MainMenu setActiveGame={setActiveGame} />;
